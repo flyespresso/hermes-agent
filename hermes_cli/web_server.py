@@ -10,6 +10,7 @@ Usage:
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import hmac
 import importlib.util
 import json
@@ -65,6 +66,12 @@ WEB_DIST = Path(os.environ["HERMES_WEB_DIST"]) if "HERMES_WEB_DIST" in os.enviro
 _log = logging.getLogger(__name__)
 
 app = FastAPI(title="Hermes Agent", version=__version__)
+
+# models.dev capability lookups are optional dashboard decoration. Bound the
+# worker pool and skip capability badges while prior lookups are still stalled
+# so a public dashboard endpoint cannot accumulate unbounded daemon threads.
+_MODEL_CAPS_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="model-caps")
+_MODEL_CAPS_SLOTS = threading.BoundedSemaphore(2)
 
 # ---------------------------------------------------------------------------
 # Session token for protecting sensitive endpoints (reveal).
@@ -939,30 +946,35 @@ def get_model_info():
         # stall while models.dev cache is cold.
         caps = {}
         try:
-            import threading
             from agent.models_dev import get_model_capabilities
 
-            holder: dict = {}
+            if _MODEL_CAPS_SLOTS.acquire(blocking=False):
+                def _load_caps():
+                    try:
+                        return get_model_capabilities(provider=provider, model=model_name)
+                    except Exception:
+                        return None
+                    finally:
+                        _MODEL_CAPS_SLOTS.release()
 
-            def _load_caps() -> None:
                 try:
-                    holder["value"] = get_model_capabilities(provider=provider, model=model_name)
+                    future = _MODEL_CAPS_EXECUTOR.submit(_load_caps)
                 except Exception:
-                    holder["value"] = None
-
-            thread = threading.Thread(target=_load_caps, daemon=True)
-            thread.start()
-            thread.join(0.5)
-            mc = holder.get("value")
-            if mc is not None:
-                caps = {
-                    "supports_tools": mc.supports_tools,
-                    "supports_vision": mc.supports_vision,
-                    "supports_reasoning": mc.supports_reasoning,
-                    "context_window": mc.context_window,
-                    "max_output_tokens": mc.max_output_tokens,
-                    "model_family": mc.model_family,
-                }
+                    _MODEL_CAPS_SLOTS.release()
+                    raise
+                try:
+                    mc = future.result(timeout=0.5)
+                except FutureTimeoutError:
+                    mc = None
+                if mc is not None:
+                    caps = {
+                        "supports_tools": mc.supports_tools,
+                        "supports_vision": mc.supports_vision,
+                        "supports_reasoning": mc.supports_reasoning,
+                        "context_window": mc.context_window,
+                        "max_output_tokens": mc.max_output_tokens,
+                        "model_family": mc.model_family,
+                    }
         except Exception:
             pass
 
