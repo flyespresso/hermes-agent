@@ -7,6 +7,10 @@
 
 .hermes-kanban {
   width: 100%;
+  /* App.tsx puts `uppercase` on the dashboard shell. Kanban renders
+   * user-authored titles, descriptions, paths, JSON, and worker output, so
+   * opt the plugin root back out and let only explicit chrome labels opt in. */
+  text-transform: none;
 }
 
 /* ---- Columns layout -------------------------------------------------- */
@@ -413,6 +417,8 @@
 }
 .hermes-kanban-event-payload {
   color: var(--color-muted-foreground);
+  background: transparent;
+  text-shadow: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -606,8 +612,11 @@
 /* ---- Markdown rendering -------------------------------------------- */
 
 .hermes-kanban-md {
+  font-family: inherit;
   font-size: 0.85rem;
   line-height: 1.6;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--color-foreground);
 }
 .hermes-kanban-md p  { margin: 0.25rem 0; }
@@ -637,7 +646,8 @@
   padding: 0.05rem 0.3rem;
   background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
   border-radius: 3px;
-  color: inherit;
+  color: var(--color-foreground);
+  text-shadow: none;
 }
 /* Fenced code block. Set a visible background even when --color-foreground
  * is empty (color-mix falls through to transparent in that case), and force
@@ -652,6 +662,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm, 0.25rem);
   overflow-x: auto;
+  color: var(--color-foreground);
+  text-shadow: none;
 }
 .hermes-kanban-md-code code {
   background: transparent;
@@ -765,6 +777,8 @@
   line-height: 1.5;
   padding: 0.15rem 0 0;
   color: var(--color-muted-foreground);
+  background: transparent;
+  text-shadow: none;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--font-mono, ui-monospace, monospace);

@@ -656,6 +656,49 @@ def test_config_reads_dashboard_kanban_section(tmp_path, monkeypatch, client):
     assert data["render_markdown"] is False
 
 
+def test_kanban_css_opts_out_of_global_dashboard_uppercase():
+    repo_root = Path(__file__).resolve().parents[2]
+    css = (repo_root / "plugins" / "kanban" / "dashboard" / "dist" / "style.css").read_text()
+
+    root = css[css.index(".hermes-kanban {"):css.index("/* ---- Columns layout")]
+    assert "text-transform: none;" in root
+
+    markdown = css[css.index(".hermes-kanban-md {"):css.index(".hermes-kanban-md p")]
+    assert "font-family: inherit;" in markdown
+    assert "letter-spacing: normal;" in markdown
+    assert "text-transform: none;" in markdown
+
+
+def test_markdown_code_uses_theme_foreground_for_contrast():
+    repo_root = Path(__file__).resolve().parents[2]
+    css = (repo_root / "plugins" / "kanban" / "dashboard" / "dist" / "style.css").read_text()
+
+    inline_code = css[css.index(".hermes-kanban-md code {"):css.index("/* Fenced code block")]
+    assert "color: var(--color-foreground);" in inline_code
+    assert "text-shadow: none;" in inline_code
+
+    block_code = css[css.index(".hermes-kanban-md-code {"):css.index(".hermes-kanban-md-code code")]
+    assert "color: var(--color-foreground);" in block_code
+    assert "text-shadow: none;" in block_code
+
+    block_code_inner = css[css.index(".hermes-kanban-md-code code {"):css.index(".hermes-kanban-md strong")]
+    assert "color: inherit;" in block_code_inner
+
+
+def test_drawer_json_code_chips_do_not_inherit_global_highlight_background():
+    repo_root = Path(__file__).resolve().parents[2]
+    css = (repo_root / "plugins" / "kanban" / "dashboard" / "dist" / "style.css").read_text()
+
+    event_payload = css[css.index(".hermes-kanban-event-payload {"):css.index(".hermes-kanban-drawer-comment-row {")]
+    assert "background: transparent;" in event_payload
+    assert "text-shadow: none;" in event_payload
+
+    run_meta_start = css.index(".hermes-kanban-run-meta {")
+    run_meta = css[run_meta_start:css.index("/* -------------------------------------------------------------------------", run_meta_start)]
+    assert "background: transparent;" in run_meta
+    assert "text-shadow: none;" in run_meta
+
+
 # ---------------------------------------------------------------------------
 # Runs surfacing (vulcan-artivus RFC feedback)
 # ---------------------------------------------------------------------------
