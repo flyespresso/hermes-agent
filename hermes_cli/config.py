@@ -2552,7 +2552,7 @@ def _normalize_custom_provider_entry(
     _KNOWN_KEYS = {
         "name", "api", "url", "base_url", "api_key", "key_env", "api_key_env",
         "api_mode", "transport", "model", "default_model", "models",
-        "context_length", "rate_limit_delay",
+        "discover_models", "context_length", "rate_limit_delay",
         "request_timeout_seconds", "stale_timeout_seconds",
     }
     for camel, snake in _CAMEL_ALIASES.items():
@@ -2635,6 +2635,10 @@ def _normalize_custom_provider_entry(
         normalized["models"] = {
             str(m): {} for m in models if isinstance(m, str) and m.strip()
         }
+
+    discover_models = entry.get("discover_models")
+    if isinstance(discover_models, bool):
+        normalized["discover_models"] = discover_models
 
     context_length = entry.get("context_length")
     if isinstance(context_length, int) and context_length > 0:
